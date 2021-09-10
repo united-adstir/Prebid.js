@@ -128,7 +128,7 @@ function mapImpression(slot) {
     id: slot.bidId,
     banner: mapBanner(slot),
     native: mapNative(slot),
-    tagid: slot.adUnitCode.toString()
+    tagid: utils.getGptSlotInfoForAdUnitCode(slot.adUnitCode.toString()).gptSlot
   };
 
   const bidfloor = applyFloor(slot);

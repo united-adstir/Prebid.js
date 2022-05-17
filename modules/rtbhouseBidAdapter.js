@@ -131,6 +131,10 @@ function mapImpression(slot) {
     tagid: utils.getGptSlotInfoForAdUnitCode(slot.adUnitCode.toString()).gptSlot
   };
 
+  if (typeof imp.tagid === 'undefined') {
+    imp.tagid = slot.params.adstirhbdCode;
+  }
+
   const bidfloor = applyFloor(slot);
   if (bidfloor) {
     imp.bidfloor = bidfloor;

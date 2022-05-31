@@ -1,4 +1,4 @@
-import {deepAccess, getOrigin, isArray, logError} from '../src/utils.js';
+import {deepAccess, getOrigin, isArray, logError, getGptSlotInfoForAdUnitCode} from '../src/utils.js';
 import {BANNER, NATIVE} from '../src/mediaTypes.js';
 import {registerBidder} from '../src/adapters/bidderFactory.js';
 import {includes} from '../src/polyfill.js';
@@ -130,7 +130,7 @@ function mapImpression(slot) {
     id: slot.bidId,
     banner: mapBanner(slot),
     native: mapNative(slot),
-    tagid: utils.getGptSlotInfoForAdUnitCode(slot.adUnitCode.toString()).gptSlot
+    tagid: getGptSlotInfoForAdUnitCode(slot.adUnitCode.toString()).gptSlot
   };
 
   if (typeof imp.tagid === 'undefined') {

@@ -4,7 +4,7 @@ import { registerBidder } from '../src/adapters/bidderFactory.js';
 import { BANNER } from '../src/mediaTypes.js';
 
 const BIDDER_CODE = 'adstir';
-const ENDPOINT = 'https://stage-ad.ad-stir.com/prebid'
+const ENDPOINT = 'https://ad.ad-stir.com/prebid'
 
 export const spec = {
   code: BIDDER_CODE,

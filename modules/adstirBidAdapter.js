@@ -15,6 +15,8 @@ export const spec = {
   },
 
   buildRequests: function (validBidRequests, bidderRequest) {
+    const sua = utils.deepAccess(validBidRequests[0], 'ortb2.device.sua', null);
+
     const requests = validBidRequests.map((r) => {
       return {
         method: 'POST',
@@ -28,9 +30,12 @@ export const spec = {
           mediaTypes: r.mediaTypes,
           sizes: r.sizes,
           ref: {
-            referrer: bidderRequest.refererInfo.referer,
+            page: bidderRequest.refererInfo.page,
+            tloc: bidderRequest.refererInfo.topmostLocation,
+            referrer: bidderRequest.refererInfo.ref,
             topurl: config.getConfig('pageUrl') ? false : bidderRequest.refererInfo.reachedTop,
           },
+          sua,
           gdpr: utils.deepAccess(bidderRequest, 'gdprConsent.gdprApplies', false),
           usp: (bidderRequest.uspConsent || '1---') !== '1---',
           eids: utils.deepAccess(bidderRequest, 'userIdAdEids', []),
@@ -39,6 +44,7 @@ export const spec = {
         }),
       }
     });
+
     return requests;
   },
 

@@ -134,14 +134,15 @@ describe('AdstirAdapter', function () {
     const bidderRequest = {
       auctionId: 'b06c5141-fe8f-4cdf-9d7d-54415490a917',
       refererInfo: {
-        referer: 'https://ad-stir.com/contact',
+        page: 'https://ad-stir.com/contact',
+        topmostLocation: 'https://ad-stir.com/contact',
         reachedTop: true,
+        ref: 'https://test.example/q=adstir',
         isAmp: false,
         numIframes: 0,
         stack: [
           'https://ad-stir.com/contact',
         ],
-        canonicalUrl: null,
       },
     };
 
@@ -150,7 +151,7 @@ describe('AdstirAdapter', function () {
       expect(requests.length).to.equal(validBidRequests.length);
       requests.forEach(function (r, i) {
         expect(r.method).to.equal('POST');
-        expect(r.url).to.equal('http://localhost:8081/prebid');
+        expect(r.url).to.equal('https://ad.ad-stir.com/prebid');
         const d = JSON.parse(r.data);
         expect(d.auctionId).to.equal('b06c5141-fe8f-4cdf-9d7d-54415490a917');
 
@@ -161,12 +162,39 @@ describe('AdstirAdapter', function () {
         expect(d.transactionId).to.equal(v.transactionId);
         expect(d.mediaTypes).to.deep.equal(v.mediaTypes);
         expect(d.sizes).to.deep.equal(v.sizes);
-        expect(d.ref.referrer).to.equal(bidderRequest.refererInfo.referer);
+        expect(d.ref.page).to.equal(bidderRequest.refererInfo.page);
+        expect(d.ref.tloc).to.equal(bidderRequest.refererInfo.topmostLocation);
+        expect(d.ref.referrer).to.equal(bidderRequest.refererInfo.ref);
+        expect(d.sua).to.equal(null);
         expect(d.gdpr).to.equal(false);
         expect(d.usp).to.equal(false);
         expect(d.schain).to.equal(null);
         expect(d.eids).to.deep.equal([]);
       });
+    });
+
+    it('ref.page, ref.tloc and ref.referrer correspond to refererInfo', function () {
+      const [ request ] = spec.buildRequests([validBidRequests[0]], {
+        auctionId: 'b06c5141-fe8f-4cdf-9d7d-54415490a917',
+        refererInfo: {
+          page: null,
+          topmostLocation: 'https://adserver.example/iframe1.html',
+          reachedTop: false,
+          ref: null,
+          isAmp: false,
+          numIframes: 2,
+          stack: [
+            null,
+            'https://adserver.example/iframe1.html',
+            'https://adserver.example/iframe2.html'
+          ],
+        },
+      });
+
+      const { ref } = JSON.parse(request.data);
+      expect(ref.page).to.equal(null);
+      expect(ref.tloc).to.equal('https://adserver.example/iframe1.html');
+      expect(ref.referrer).to.equal(null);
     });
 
     it('when config.pageUrl is not set, ref.topurl equals to refererInfo.reachedTop', function () {
@@ -222,6 +250,92 @@ describe('AdstirAdapter', function () {
         const requests = spec.buildRequests(validBidRequests, bidderRequestClone);
         const d = JSON.parse(requests[0].data);
         expect(d.usp).to.equal(expected);
+      });
+    });
+
+    it('should add schain if available', function() {
+      const schain = {
+        'ver': '1.0',
+        'complete': 1,
+        'nodes': [
+          {
+            'asi': 'exchange1.example',
+            'sid': '1234!abcd',
+            'hp': 1,
+            'rid': 'bid-request-1',
+            'name': 'publisher, Inc.',
+            'domain': 'publisher.example'
+          },
+          {
+            'asi': 'exchange2.example',
+            'sid': 'abcd',
+            'hp': 1,
+            'rid': 'bid-request-2',
+            'name': 'intermediary',
+            'domain': 'intermediary.example'
+          }
+        ]
+      };
+
+      const [ request ] = spec.buildRequests([utils.mergeDeep(utils.deepClone(validBidRequests[0]), { schain })], bidderRequest);
+      const d = JSON.parse(request.data);
+      expect(d.schain).to.deep.equal(schain);
+    });
+
+    it('should add UA client hints to payload if available', function () {
+      const sua = {
+        browsers: [
+          {
+            brand: 'Not?A_Brand',
+            version: [
+              '8',
+              '0',
+              '0',
+              '0'
+            ]
+          },
+          {
+            version: [
+              '108',
+              '0',
+              '5359',
+              '40'
+            ]
+          },
+          {
+            brand: 'Google Chrome',
+            version: [
+              '108',
+              '0',
+              '5359',
+              '40'
+            ]
+          }
+        ],
+        platform: {
+          brand: 'Android',
+          version: [
+            '11'
+          ]
+        },
+        mobile: 1,
+        architecture: '',
+        bitness: '64',
+        model: 'Pixel 5',
+        source: 2
+      }
+
+      const validBidRequestsClone = utils.deepClone(validBidRequests);
+      validBidRequestsClone[0] = utils.mergeDeep(validBidRequestsClone[0], {
+        ortb2: {
+          device: { sua },
+        }
+      });
+
+      const requests = spec.buildRequests(validBidRequestsClone, bidderRequest);
+      requests.forEach(function (r) {
+        const d = JSON.parse(r.data);
+        expect(d.sua).to.deep.equal(sua);
       });
     });
   });

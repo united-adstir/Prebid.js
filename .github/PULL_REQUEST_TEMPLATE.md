@@ -16,7 +16,7 @@ For any user facing change, submit a link to a PR on the docs repo at https://gi
 <!-- Remove items that don't apply and/or select an item by changing [ ] to [x] -->
 - [ ] Bugfix
 - [ ] Feature
-- [ ] New bidder adapter  <!--  IMPORTANT: if checking here, also submit your bidder params documentation here https://github.com/prebid/prebid.github.io/tree/master/dev-docs/bidders --> 
+- [x] New bidder adapter  <!--  IMPORTANT: if checking here, also submit your bidder params documentation here https://github.com/prebid/prebid.github.io/tree/master/dev-docs/bidders -->
 - [ ] Code style update (formatting, local variables)
 - [ ] Refactoring (no functional changes, no api changes)
 - [ ] Build related changes
@@ -42,6 +42,19 @@ For any user facing change, submit a link to a PR on the docs repo at https://gi
 
 Be sure to test the integration with your adserver using the [Hello World](/integrationExamples/gpt/hello_world.html) sample page. -->
 
+adstir Adapter
+
+maintainer email: [support@ad-stir.com](mailto:support@ad-stir.com)
+
+```
+{
+    bidder: 'adstir',
+    params: {
+        appId: 'TEST-MEDIA',
+        adSpaceNo: 1,
+    }
+}
+```
 
 ## Other information
 <!-- References to related PR or issue #s, @mentions of the person or team responsible for reviewing changes, etc. -->

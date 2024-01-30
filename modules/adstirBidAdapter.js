@@ -2,9 +2,14 @@ import * as utils from '../src/utils.js';
 import { config } from '../src/config.js';
 import { registerBidder } from '../src/adapters/bidderFactory.js';
 import { BANNER } from '../src/mediaTypes.js';
+import {getStorageManager} from '../src/storageManager.js';
 
 const BIDDER_CODE = 'adstir';
-const ENDPOINT = 'https://ad.ad-stir.com/prebid'
+const ENDPOINT = 'https://ad.ad-stir.com/prebid';
+const USER_ID_KEY = 'adstir_media_uid';
+const OPTOUT_ID_KEY = 'adstir_optout';
+
+export const storage = getStorageManager({bidderCode: BIDDER_CODE});
 
 export const spec = {
   code: BIDDER_CODE,
@@ -16,6 +21,7 @@ export const spec = {
 
   buildRequests: function (validBidRequests, bidderRequest) {
     const sua = utils.deepAccess(validBidRequests[0], 'ortb2.device.sua', null);
+    const adstirMediaUid = getUserId();
 
     const requests = validBidRequests.map((r) => {
       return {
@@ -38,7 +44,15 @@ export const spec = {
           sua,
           gdpr: utils.deepAccess(bidderRequest, 'gdprConsent.gdprApplies', false),
           usp: (bidderRequest.uspConsent || '1---') !== '1---',
-          eids: utils.deepAccess(r, 'userIdAsEids', []),
+          eids: adstirMediaUid ? utils.deepAccess(r, 'userIdAsEids', []).concat([{
+            source: 'ad-stir.com',
+            uids: [
+              {
+                id: adstirMediaUid,
+                atype: 1
+              }
+            ]
+          }]) : utils.deepAccess(r, 'userIdAsEids', []),
           schain: serializeSchain(utils.deepAccess(r, 'schain', null)),
           pbVersion: '$prebid.version$',
         }),
@@ -63,6 +77,35 @@ export const spec = {
     });
     return bids;
   },
+}
+
+export function getUserId() {
+  let uid;
+  if (storage.localStorageIsEnabled() && !isOptedOut()) {
+    uid = storage.getDataFromLocalStorage(USER_ID_KEY);
+
+    if (!uid) {
+      uid = utils.generateUUID();
+      storage.setDataInLocalStorage(USER_ID_KEY, uid);
+    }
+  }
+  return uid;
+}
+
+function isOptedOut() {
+  if (storage.cookiesAreEnabled()) {
+    const value = storage.getCookie(OPTOUT_ID_KEY);
+    if (value && value === '1') {
+      return true;
+    }
+  }
+  if (storage.localStorageIsEnabled()) {
+    const value = storage.getDataFromLocalStorage(OPTOUT_ID_KEY);
+    if (value && value === '1') {
+      return true;
+    }
+  }
+  return false;
 }
 
 function serializeSchain(schain) {

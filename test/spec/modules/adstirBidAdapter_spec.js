@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { spec } from '../../../modules/adstirBidAdapter.js';
+import { storage, spec, getUserId } from '../../../modules/adstirBidAdapter.js';
 import * as utils from 'src/utils.js';
 import { config } from 'src/config.js';
 
@@ -84,6 +84,17 @@ describe('AdstirAdapter', function () {
   });
 
   describe('buildRequests', function () {
+    let sandbox;
+    beforeEach(function () {
+      sandbox = sinon.sandbox.create();
+    });
+    afterEach(function () {
+      sandbox.restore();
+    });
+
+    const USER_ID_KEY = 'adstir_media_uid';
+    const OPTOUT_ID_KEY = 'adstir_optout';
+
     const validBidRequests = [
       {
         auctionId: 'b06c5141-fe8f-4cdf-9d7d-54415490a917',
@@ -253,6 +264,49 @@ describe('AdstirAdapter', function () {
       });
     });
 
+    it('should add adstir media uid if available', function() {
+      sandbox.stub(storage, 'localStorageIsEnabled').returns(true);
+      sandbox
+        .stub(storage, 'getDataFromLocalStorage')
+        .withArgs(OPTOUT_ID_KEY)
+        .returns('0')
+        .withArgs(USER_ID_KEY)
+        .returns('test_adstir_media_uid');
+
+      const eids = [
+        {
+          source: 'example1.com',
+          uids: [
+            {
+              id: 'test_uid1',
+              atype: 1,
+            },
+          ],
+        },
+        {
+          source: 'example2.com',
+          uids: [
+            {
+              id: 'test_uid2',
+              atype: 1,
+            },
+          ],
+        },
+      ];
+
+      const [ request ] = spec.buildRequests([utils.mergeDeep(utils.deepClone(validBidRequests[0]), { userIdAsEids: eids })], bidderRequest);
+      const d = JSON.parse(request.data);
+      expect(d.eids).to.deep.equal(eids.concat([{
+        source: 'ad-stir.com',
+        uids: [
+          {
+            id: 'test_adstir_media_uid',
+            atype: 1,
+          },
+        ],
+      }]));
+    });
+
     it('should add schain if available', function() {
       const schain = {
         'ver': '1.0',
@@ -407,6 +461,47 @@ describe('AdstirAdapter', function () {
       };
       const bids = spec.interpretResponse(serverResponse);
       expect(bids[0]).to.deep.equal(serverResponse.body.seatbid[0].bid);
+    });
+  });
+
+  describe('getUserId', function () {
+    let sandbox;
+    beforeEach(function () {
+      sandbox = sinon.sandbox.create();
+    });
+    afterEach(function () {
+      sandbox.restore();
+    });
+
+    const USER_ID_KEY = 'adstir_media_uid';
+    const OPTOUT_ID_KEY = 'adstir_optout';
+
+    it('should generate uid, set it to localStorage, and return it if adstir media uid does not exists', function () {
+      sandbox.stub(storage, 'localStorageIsEnabled').returns(true);
+      const st1 = sandbox
+        .stub(storage, 'getDataFromLocalStorage')
+        .withArgs(OPTOUT_ID_KEY)
+        .returns('0')
+        .withArgs(USER_ID_KEY)
+        .returns(null);
+
+      const uid = getUserId();
+      expect(uid).to.exist;
+    });
+
+    it('should return null if optout is activated by localStorage', function () {
+      sandbox.stub(storage, 'localStorageIsEnabled').returns(true);
+      sandbox.stub(storage, 'getDataFromLocalStorage').withArgs(OPTOUT_ID_KEY).returns('1');
+      const uid = getUserId();
+      expect(uid).to.be.undefined;
+    });
+
+    it('should return null if optout is activated by cookie', function () {
+      sandbox.stub(storage, 'localStorageIsEnabled').returns(true);
+      sandbox.stub(storage, 'cookiesAreEnabled').returns(true);
+      sandbox.stub(storage, 'getCookie').withArgs(OPTOUT_ID_KEY).returns('1');
+      const uid = getUserId();
+      expect(uid).to.be.undefined;
     });
   });
 });
